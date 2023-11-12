@@ -1,0 +1,39 @@
+valid_dataloader:
+  - type: web_dataloader
+    args:
+      shards: ./data/imagenet/processed/train/imagenet-train-{000000..000639}.tar
+      dataset_size: 1280000
+      shuffle: 10000
+      num_workers: 16
+      batch_size: 4096
+      train: true
+      transform_type: linear_prob
+  - type: web_dataloader
+    args:
+      shards: ./data/imagenet/processed/val/imagenet-val-{000000..000099}.tar
+      dataset_size: 50000
+      shuffle: 0
+      num_workers: 16
+      batch_size: 4096
+      train: false
+
+evaluator:
+- type: LinearProbingEvaluator
+  args:
+    hyperparams:
+    - log_name: '_regular'
+      apply_evaluator_after_epochs: null
+      epochs: 90
+      base_learning_rate: 0.1
+      batch_size: 4096
+      optimizer:
+        type: SGD
+        args:
+          momentum: 0.9
+          weight_decay: 0.0
+      optimizer_use_larc: true
+      lr_scheduler:
+        type: CustomCosineSchedulerWithWarmup
+        args:
+          epochs: 90
+          warmup_epochs: 0

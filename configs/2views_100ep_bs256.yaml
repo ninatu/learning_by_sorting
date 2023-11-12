@@ -1,0 +1,90 @@
+train_dataloader:
+  type: web_dataloader
+  args:
+    shards: ./data/imagenet/processed/train/imagenet-train-{000000..000639}.tar
+    dataset_size: 1280000
+    shuffle: 10000
+    num_workers: 16
+    batch_size: 256
+    transform_type: dino
+    n_augs: 2
+valid_dataloader:
+- type: web_dataloader
+  args:
+    shards: ./data/imagenet/processed/train/imagenet-train-{000000..000639}.tar
+    dataset_size: 1280000
+    shuffle: 10000
+    num_workers: 16
+    batch_size: 4096
+    train: true
+    transform_type: linear_prob
+- type: web_dataloader
+  args:
+    shards: ./data/imagenet/processed/val/imagenet-val-{000000..000099}.tar
+    dataset_size: 50000
+    shuffle: 0
+    num_workers: 16
+    batch_size: 4096
+    train: false
+encoder:
+  type: RegularEncoder
+  args:
+    arch: resnet50
+projection:
+  type: RegularProjection
+  args:
+    num_layers: 3
+    output_dim: 2048
+loss:
+  type: GroCo
+  args:
+    n_augs: 2
+    topk_neg: 10
+    steepness: 1
+learning_rate_scaling: linear
+base_learning_rate: 0.75
+optimizer_use_larc: false
+warmup_epochs: 1
+optimizer:
+  type: SGD
+  args:
+    momentum: 0.9
+    weight_decay: 1.0e-06
+trainer:
+  epochs: 100
+  mixed_precision: true
+  init_val: false
+  save_latest: true
+  save_period: 100
+  log_step: 50
+  clip_grad: 1000000.0  # just to log gradient norm
+seed: null
+save_dir: ./output
+evaluator:
+- type: KNNEvaluator
+  args:
+    log_name: '_online'
+    apply_evaluator_per_epoch: 10
+    k: [20]
+    num_classes: 1000
+    temperature: 0.07
+    max_feature_bank: 30000
+- type: LinearProbingEvaluator
+  args:
+    hyperparams:
+    - log_name: '_regular'
+      apply_evaluator_after_epochs: [99]
+      epochs: 90
+      base_learning_rate: 0.1
+      batch_size: 4096
+      optimizer:
+        type: SGD
+        args:
+          momentum: 0.9
+          weight_decay: 0.0
+      optimizer_use_larc: true
+      lr_scheduler:
+        type: CustomCosineSchedulerWithWarmup
+        args:
+          epochs: 90
+          warmup_epochs: 0
